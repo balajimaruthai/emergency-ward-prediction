@@ -3,11 +3,12 @@ import { Loader2, Activity } from 'lucide-react';
 import { LandingPage } from '@/pages/LandingPage';
 import { SignUpPage } from '@/pages/SignUpPage';
 import { AuthPage } from '@/pages/AuthPage';
+import { AmbulanceDriverPage } from '@/pages/AmbulanceDriverPage';
 import { DashboardShell } from '@/components/DashboardShell';
 import { useAuth, getSelectedCity } from '@/hooks/useAuth';
 import type { UserRole } from '@/lib/types';
 
-type AppView = 'landing' | 'signup' | 'login';
+type AppView = 'landing' | 'signup' | 'login' | 'ambulance-portal';
 
 function App() {
   const [view, setView] = useState<AppView>('landing');
@@ -29,6 +30,11 @@ function App() {
     );
   }
 
+  // Standalone ambulance portal webpage view (accessible directly)
+  if (view === 'ambulance-portal') {
+    return <AmbulanceDriverPage onBackToMain={() => setView('landing')} />;
+  }
+
   // If user is signed in, show dashboard
   if (user) {
     const role = (user as { role?: UserRole }).role ?? 'public';
@@ -48,6 +54,7 @@ function App() {
     return (
       <LandingPage
         onSignIn={() => setView('login')}
+        onOpenAmbulancePortal={() => setView('ambulance-portal')}
         onSelectRole={(role, city) => {
           setPendingRole(role);
           setPendingCity(city ?? null);

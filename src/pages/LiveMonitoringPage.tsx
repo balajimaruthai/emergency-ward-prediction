@@ -22,6 +22,7 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { LineChart } from '@/components/LineChart';
 import { WardDetailDrawer } from '@/components/WardDetailDrawer';
 import type { Ward, WardFilter, SortMode, WardStatus } from '@/lib/types';
+import { getSelectedCity } from '@/hooks/useAuth';
 
 const FILTERS: { label: string; value: WardFilter }[] = [
   { label: 'All', value: 'ALL' },
@@ -46,12 +47,32 @@ const STATUS_TO_FILTER: Record<WardStatus, WardFilter> = {
   FULL: 'FULL',
 };
 
+import { downloadCSV } from '@/lib/csvExport';
+
 export function LiveMonitoringPage() {
   const { data, status, lastUpdated, changedWardIds } = useRealtimeContext();
   const now = useTick(1000);
   const [filter, setFilter] = useState<WardFilter>('ALL');
   const [sort, setSort] = useState<SortMode>('URGENCY');
   const [selectedWard, setSelectedWard] = useState<Ward | null>(null);
+
+  const handleExportCSV = () => {
+    const rows = filtered.map((w) => {
+      const statusStr = getWardStatus(w.occupiedBeds, w.totalBeds);
+      return {
+        'Ward ID': w.id,
+        'Ward Name': w.name,
+        'Status': statusStr,
+        'Total Beds': w.totalBeds,
+        'Occupied Beds': w.occupiedBeds,
+        'Available Beds': w.totalBeds - w.occupiedBeds,
+        'Occupancy Rate (%)': `${Math.round((w.occupiedBeds / w.totalBeds) * 100)}%`,
+        'Last Update': new Date().toISOString(),
+      };
+    });
+    const city = getSelectedCity() ?? 'Chennai';
+    downloadCSV(`live_ward_monitoring_${city.toLowerCase()}.csv`, rows);
+  };
 
   const filtered = data.wards
     .filter((w) => filter === 'ALL' || STATUS_TO_FILTER[getWardStatus(w.occupiedBeds, w.totalBeds)] === filter)
@@ -62,7 +83,6 @@ export function LiveMonitoringPage() {
         return sa - sb;
       }
       if (sort === 'ALPHABETICAL') return a.name.localeCompare(b.name);
-      // MOST_AVAILABLE — descending available beds
       return (b.totalBeds - b.occupiedBeds) - (a.totalBeds - a.occupiedBeds);
     });
 
@@ -88,11 +108,18 @@ export function LiveMonitoringPage() {
             </h1>
           </div>
           <p className="text-sm text-slate-500 dark:text-navy-400">
-            Real-time ward-by-ward monitoring and capacity heatmap.
+            Real-time ward occupancy, capacity metrics, and instant emergency status feeds.
           </p>
         </div>
-        <div className="flex items-center gap-3 text-sm">
-          <div className="flex items-center gap-2">
+
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleExportCSV}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-accent-600 hover:bg-accent-700 text-white text-xs font-bold transition-all shadow-md shadow-accent-500/20 active:scale-95 self-start sm:self-center"
+          >
+            Export Live Monitoring Feed (CSV)
+          </button>
+          <div className="flex items-center gap-2 text-sm">
             <span
               className="w-2 h-2 rounded-full"
               style={{ backgroundColor: status === 'SIMULATION' ? '#D97706' : '#16A34A' }}
@@ -101,10 +128,6 @@ export function LiveMonitoringPage() {
               {status === 'SIMULATION' ? 'Simulation Mode' : 'Live'}
             </span>
           </div>
-          <span className="text-slate-300 dark:text-navy-500">|</span>
-          <span className="text-slate-400 dark:text-navy-400 tabular-nums">
-            {formatRelativeTime(lastUpdated, now)}
-          </span>
         </div>
       </div>
 

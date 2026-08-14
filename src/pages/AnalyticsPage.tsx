@@ -9,14 +9,34 @@ import {
   PieChart,
   Download,
 } from 'lucide-react';
+import { downloadCSV } from '@/lib/csvExport';
 import { useRealtimeContext } from '@/hooks/realtimeContext';
+import type { Ward } from '@/lib/types';
 
 export function AnalyticsPage() {
   const { data } = useRealtimeContext();
 
-  const totalBeds = data.wards.reduce((s, w) => s + w.totalBeds, 0);
-  const occupied = data.wards.reduce((s, w) => s + w.occupiedBeds, 0);
+  const totalBeds = data.wards.reduce((s: number, w: Ward) => s + w.totalBeds, 0);
+  const occupied = data.wards.reduce((s: number, w: Ward) => s + w.occupiedBeds, 0);
   const occupancyPct = totalBeds > 0 ? ((occupied / totalBeds) * 100).toFixed(1) : '0';
+
+  const handleExportCSV = () => {
+    const rows = data.wards.map((w: Ward) => {
+      const util = Math.round((w.occupiedBeds / w.totalBeds) * 100);
+      return {
+        'Department Name': w.name,
+        'Short Code': w.shortName,
+        'Total Beds': w.totalBeds,
+        'Occupied Beds': w.occupiedBeds,
+        'Available Beds': w.totalBeds - w.occupiedBeds,
+        'Occupancy Rate (%)': `${util}%`,
+        'Peak Hours': '19:00 - 22:00',
+        'Turnover Rate': '1.8 beds/day',
+        'Export Timestamp': new Date().toISOString(),
+      };
+    });
+    downloadCSV('hospital_analytics_report.csv', rows);
+  };
 
   return (
     <div className="space-y-8">
@@ -36,9 +56,12 @@ export function AnalyticsPage() {
           </p>
         </div>
 
-        <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-accent-600 hover:bg-accent-700 text-white text-xs font-bold transition-all shadow-md shadow-accent-500/20">
+        <button
+          onClick={handleExportCSV}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-accent-600 hover:bg-accent-700 text-white text-xs font-bold transition-all shadow-md shadow-accent-500/20 active:scale-95"
+        >
           <Download className="w-3.5 h-3.5" />
-          Export Analytics Report
+          Export Analytics Report (CSV)
         </button>
       </div>
 
@@ -87,7 +110,7 @@ export function AnalyticsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-white/5">
-              {data.wards.map((w) => {
+              {data.wards.map((w: Ward) => {
                 const util = Math.round((w.occupiedBeds / w.totalBeds) * 100);
                 return (
                   <tr key={w.id} className="hover:bg-slate-50 dark:hover:bg-navy-800/40">

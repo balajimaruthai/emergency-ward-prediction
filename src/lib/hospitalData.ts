@@ -245,10 +245,14 @@ export function getHospitalsForCity(cityName: string, includeNearby = true): Hos
     const emergencyWard = wards.find((w) => w.name === 'Emergency');
     const icuWard = wards.find((w) => w.name === 'ICU');
     const hospitalCity = CITIES.find((c) => c.name === seed.city);
-    const distance = hospitalCity && hospitalCity.name !== cityName
-      ? haversineKm(city.lat, city.lng, hospitalCity.lat, hospitalCity.lng)
-      : 0;
-    const eta = distance > 0 ? Math.round((distance / 35) * 60) : 0;
+    const offsetLat = ((idx % 3) - 1) * 0.025 + (idx * 0.006);
+    const offsetLng = (((idx + 1) % 3) - 1) * 0.025 - (idx * 0.005);
+    const hLat = Number(((hospitalCity?.lat ?? city.lat) + offsetLat).toFixed(4));
+    const hLng = Number(((hospitalCity?.lng ?? city.lng) + offsetLng).toFixed(4));
+
+    const rawDist = haversineKm(city.lat, city.lng, hLat, hLng);
+    const distance = Number((rawDist > 0.5 ? rawDist : (3.5 + idx * 1.8)).toFixed(1));
+    const eta = Math.max(5, Math.round(distance * 2.2));
     const ventilators = Math.round((icuWard?.totalBeds ?? 0) * 0.6);
 
     return {
@@ -256,8 +260,8 @@ export function getHospitalsForCity(cityName: string, includeNearby = true): Hos
       name: seed.name,
       city: seed.city,
       state: seed.state,
-      lat: hospitalCity?.lat ?? 0,
-      lng: hospitalCity?.lng ?? 0,
+      lat: hLat,
+      lng: hLng,
       totalBeds,
       occupiedBeds,
       emergencyBeds: emergencyWard?.totalBeds ?? 0,
@@ -267,8 +271,8 @@ export function getHospitalsForCity(cityName: string, includeNearby = true): Hos
       traumaCenter: seed.traumaCenter ?? false,
       pediatric: seed.pediatric ?? false,
       cardiac: seed.cardiac ?? false,
-      distanceKm: distance > 0 ? Math.round(distance) : undefined,
-      etaMinutes: eta > 0 ? eta : undefined,
+      distanceKm: distance,
+      etaMinutes: eta,
       wards,
       lastUpdated: Date.now() - Math.floor(Math.random() * 60000),
     };

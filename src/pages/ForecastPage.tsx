@@ -10,11 +10,31 @@ import {
   Shield,
   Layers,
 } from 'lucide-react';
+import { downloadCSV } from '@/lib/csvExport';
 import { useRealtimeContext } from '@/hooks/realtimeContext';
+import type { Ward } from '@/lib/types';
 
 export function ForecastPage() {
   const { data } = useRealtimeContext();
   const [range, setRange] = useState<'24h' | '7d' | '30d'>('24h');
+
+  const handleExportCSV = () => {
+    const rows = data.wards.map((w: Ward) => {
+      const predictedInflow = Math.round(w.occupiedBeds * 0.35 + 8);
+      const projectedOccupancy = Math.min(100, Math.round(((w.occupiedBeds + predictedInflow) / w.totalBeds) * 100));
+      return {
+        'Department': w.name,
+        'Forecast Horizon': range,
+        'Current Occupied': w.occupiedBeds,
+        'Total Capacity': w.totalBeds,
+        'Projected Inflow (Patients)': predictedInflow,
+        'Projected Occupancy (%)': `${projectedOccupancy}%`,
+        'Risk Status': projectedOccupancy >= 85 ? 'HIGH SURGE RISK' : 'NORMAL CAPACITY',
+        'Export Date': new Date().toISOString(),
+      };
+    });
+    downloadCSV(`emergency_demand_forecast_${range}.csv`, rows);
+  };
 
   return (
     <div className="space-y-8">
@@ -34,15 +54,23 @@ export function ForecastPage() {
           </p>
         </div>
 
-        {/* Range switcher */}
-        <div className="flex items-center gap-1.5 glass-strong p-1.5 rounded-xl border border-slate-200 dark:border-white/10">
-          {(['24h', '7d', '30d'] as const).map((r) => (
-            <button
-              key={r}
-              onClick={() => setRange(r)}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                range === r
-                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/20'
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleExportCSV}
+            className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-md active:scale-95"
+          >
+            Export Forecast CSV
+          </button>
+
+          {/* Range switcher */}
+          <div className="flex items-center gap-1.5 glass-strong p-1.5 rounded-xl border border-slate-200 dark:border-white/10">
+            {(['24h', '7d', '30d'] as const).map((r) => (
+              <button
+                key={r}
+                onClick={() => setRange(r)}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  range === r
+                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/20'
                   : 'text-slate-500 dark:text-navy-300 hover:text-slate-700 dark:hover:text-white'
               }`}
             >
@@ -51,6 +79,7 @@ export function ForecastPage() {
           ))}
         </div>
       </div>
+    </div>
 
       {/* Forecast Chart Panel */}
       <div className="glass-strong rounded-2xl p-6 border border-slate-200/60 dark:border-white/5">
@@ -77,7 +106,7 @@ export function ForecastPage() {
 
         {/* Timeline visualization bars */}
         <div className="space-y-4 my-6">
-          {data.forecast.map((pt, i) => {
+          {data.forecast.map((pt: any, i: number) => {
             const isPeak = pt.demand > 75;
             const barWidth = Math.min(100, Math.max(15, pt.demand));
             const barColor = isPeak ? '#DC2626' : pt.demand > 55 ? '#D97706' : '#16A34A';

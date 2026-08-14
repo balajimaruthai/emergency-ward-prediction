@@ -61,7 +61,7 @@ const ROLES = [
   'IT / Systems Admin',
 ];
 
-export function SignUpPage({ onBack, onSignedUp }: SignUpPageProps) {
+export function SignUpPage({ onBack, onSignIn, onSignedUp }: SignUpPageProps) {
   const { theme, toggleTheme } = useTheme();
   const [step, setStep] = useState<1 | 2>(1);
   const [showPassword, setShowPassword] = useState(false);

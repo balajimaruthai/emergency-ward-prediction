@@ -13,15 +13,37 @@ import {
   ShieldAlert,
   Calendar,
 } from 'lucide-react';
+import { downloadCSV } from '@/lib/csvExport';
 import { useRealtimeContext } from '@/hooks/realtimeContext';
+import type { Ward } from '@/lib/types';
 
 export function PredictionPage() {
   const { data } = useRealtimeContext();
   const [selectedHorizon, setSelectedHorizon] = useState<'3h' | '6h' | '12h' | '24h'>('6h');
 
   // Calculate high-risk wards based on simulation
-  const highRiskWards = data.wards.filter((w) => (w.occupiedBeds / w.totalBeds) >= 0.75);
+  const highRiskWards = data.wards.filter((w: Ward) => (w.occupiedBeds / w.totalBeds) >= 0.75);
   const totalPredictArrivals = Math.round(data.patientFlow.arrivals * 1.35);
+
+  const handleExportCSV = () => {
+    const rows = data.wards.map((w: Ward) => {
+      const predictedInflow = Math.round(w.occupiedBeds * 0.28 + 5);
+      const projectedOccupied = Math.min(w.totalBeds, w.occupiedBeds + predictedInflow);
+      const saturationRisk = Math.round((projectedOccupied / w.totalBeds) * 100);
+      return {
+        'Department Name': w.name,
+        'Horizon Window': selectedHorizon,
+        'Current Beds Occupied': w.occupiedBeds,
+        'Total Capacity': w.totalBeds,
+        'Predicted New Inflow': predictedInflow,
+        'Predicted Saturation Risk (%)': `${saturationRisk}%`,
+        'Alert Level': saturationRisk >= 85 ? 'HIGH SURGE RISK' : saturationRisk >= 70 ? 'MODERATE' : 'NORMAL',
+        'Model Confidence': '94.2%',
+        'Timestamp': new Date().toISOString(),
+      };
+    });
+    downloadCSV(`ai_inflow_predictions_${selectedHorizon}.csv`, rows);
+  };
 
   return (
     <div className="space-y-8">
@@ -41,8 +63,16 @@ export function PredictionPage() {
           </p>
         </div>
 
-        {/* Horizon selector */}
-        <div className="flex items-center gap-1.5 glass-strong p-1.5 rounded-xl border border-slate-200 dark:border-white/10">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleExportCSV}
+            className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-all shadow-md active:scale-95"
+          >
+            Export Predictions CSV
+          </button>
+
+          {/* Horizon selector */}
+          <div className="flex items-center gap-1.5 glass-strong p-1.5 rounded-xl border border-slate-200 dark:border-white/10">
           {(['3h', '6h', '12h', '24h'] as const).map((h) => (
             <button
               key={h}
@@ -58,6 +88,7 @@ export function PredictionPage() {
           ))}
         </div>
       </div>
+    </div>
 
       {/* Main KPI Grid */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -164,7 +195,7 @@ export function PredictionPage() {
           </div>
 
           <div className="space-y-4">
-            {data.wards.map((ward) => {
+            {data.wards.map((ward: Ward) => {
               const currentRate = (ward.occupiedBeds / ward.totalBeds) * 100;
               const predictedAdd = Math.round(Math.random() * 6) + 2;
               const predictedRate = Math.min(100, Math.round(((ward.occupiedBeds + predictedAdd) / ward.totalBeds) * 100));

@@ -38,6 +38,8 @@ import { ExplainabilityPage } from '@/pages/ExplainabilityPage';
 import { DataManagementPage } from '@/pages/DataManagementPage';
 import { SystemHealthPage } from '@/pages/SystemHealthPage';
 import { SettingsPage } from '@/pages/SettingsPage';
+import { AmbulanceDriverHUD } from '@/components/AmbulanceDriverHUD';
+import { useAmbulanceDispatch } from '@/hooks/useAmbulanceDispatch';
 
 interface DashboardShellProps {
   role: UserRole;
@@ -145,32 +147,40 @@ export function DashboardShell({ role, userEmail, onSignOut, initialCity }: Dash
             )}
 
             {role === 'ambulance' && (
-              <AmbulanceDashboard hospitals={hospitals} city={selectedCity} onSelectHospital={setSelectedHospital} />
+              <AmbulanceDriverHUD
+                hospitals={hospitals}
+                city={selectedCity}
+                userEmail={userEmail}
+                onSelectHospital={setSelectedHospital}
+              />
             )}
 
             {role === 'hospital' && (
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={activePage}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  {activePage === 'Overview' && <OverviewPage />}
-                  {activePage === 'Live Monitoring' && <LiveMonitoringPage />}
-                  {activePage === 'Prediction' && <PredictionPage />}
-                  {activePage === 'Forecast' && <ForecastPage />}
-                  {activePage === 'Analytics' && <AnalyticsPage />}
-                  {activePage === 'Resources' && <ResourcesPage />}
-                  {activePage === 'Model' && <ModelPage />}
-                  {activePage === 'Reports' && <AnalyticsPage />}
-                  {activePage === 'Explainability' && <ExplainabilityPage />}
-                  {activePage === 'Data Management' && <DataManagementPage />}
-                  {activePage === 'System Health' && <SystemHealthPage />}
-                  {activePage === 'Settings' && <SettingsPage />}
-                </motion.div>
-              </AnimatePresence>
+              <div className="space-y-6">
+                <HospitalIncomingDispatchesBanner />
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={activePage}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    {activePage === 'Overview' && <OverviewPage />}
+                    {activePage === 'Live Monitoring' && <LiveMonitoringPage />}
+                    {activePage === 'Prediction' && <PredictionPage />}
+                    {activePage === 'Forecast' && <ForecastPage />}
+                    {activePage === 'Analytics' && <AnalyticsPage />}
+                    {activePage === 'Resources' && <ResourcesPage />}
+                    {activePage === 'Model' && <ModelPage />}
+                    {activePage === 'Reports' && <AnalyticsPage />}
+                    {activePage === 'Explainability' && <ExplainabilityPage />}
+                    {activePage === 'Data Management' && <DataManagementPage />}
+                    {activePage === 'System Health' && <SystemHealthPage />}
+                    {activePage === 'Settings' && <SettingsPage />}
+                  </motion.div>
+                </AnimatePresence>
+              </div>
             )}
           </main>
         </div>
@@ -449,5 +459,72 @@ function KpiCard({ icon: Icon, label, value, color }: { icon: typeof Activity; l
         </div>
       </div>
     </motion.div>
+  );
+}
+
+/* ===================== HOSPITAL INCOMING DISPATCHES BANNER ===================== */
+
+function HospitalIncomingDispatchesBanner() {
+  const { dispatches, acknowledgeDispatch, completeDispatch } = useAmbulanceDispatch();
+
+  if (!dispatches || dispatches.length === 0) return null;
+
+  return (
+    <div className="space-y-3">
+      {dispatches.map((d) => (
+        <motion.div
+          key={d.id}
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="glass-strong rounded-2xl border-2 border-red-500/50 p-4 bg-gradient-to-r from-red-950/80 via-navy-950 to-slate-900 shadow-2xl relative overflow-hidden glow-red flex flex-col md:flex-row md:items-center justify-between gap-4"
+        >
+          <div className="flex items-start gap-3">
+            <div className="w-12 h-12 rounded-xl bg-red-600 flex items-center justify-center text-white shrink-0 shadow-lg shadow-red-600/40 animate-pulse">
+              <Ambulance className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black tracking-widest text-red-400 uppercase bg-red-500/20 px-2 py-0.5 rounded border border-red-500/30">
+                  INCOMING EMERGENCY AMBULANCE PRE-ARRIVAL
+                </span>
+                <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded">
+                  ETA: {d.etaMinutes} MINS ({d.distanceKm} km)
+                </span>
+              </div>
+
+              <h4 className="text-lg font-black text-white mt-1">
+                {d.ambulanceUnit} ({d.driverName}) → {d.targetHospitalName}
+              </h4>
+              <div className="text-xs text-slate-300 mt-0.5 flex flex-wrap items-center gap-3">
+                <span className="font-bold text-red-400">Condition: {d.patientCondition}</span>
+                <span>•</span>
+                <span>Patient: {d.patientAgeGender}</span>
+                <span>•</span>
+                <span className="font-mono text-emerald-400">Vitals: {d.vitals}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 self-end md:self-center">
+            <div className="px-3 py-1.5 rounded-xl bg-white/10 text-xs font-bold text-emerald-400 border border-white/10">
+              {d.erBayAssigned ?? 'ER Bay Reserved'}
+            </div>
+            <button
+              onClick={() => acknowledgeDispatch(d.id)}
+              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black uppercase shadow-md transition-all"
+            >
+              Acknowledge & Reserve Bay
+            </button>
+            <button
+              onClick={() => completeDispatch(d.id)}
+              className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+              title="Clear Notification"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </motion.div>
+      ))}
+    </div>
   );
 }

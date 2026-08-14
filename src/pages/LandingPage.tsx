@@ -23,10 +23,12 @@ import {
 import { useTheme } from '@/hooks/useTheme';
 import { CITIES, searchCities } from '@/lib/hospitalData';
 import type { UserRole } from '@/lib/types';
+import { AmbulanceLoginModal } from '@/components/AmbulanceLoginModal';
 
 interface LandingPageProps {
   onSelectRole: (role: UserRole, city?: string) => void;
   onSignIn?: () => void;
+  onOpenAmbulancePortal?: () => void;
 }
 
 const ROLE_CARDS = [
@@ -72,13 +74,14 @@ const STATS = [
   { label: 'Prediction Accuracy', value: '94%' },
 ];
 
-export function LandingPage({ onSelectRole }: LandingPageProps) {
+export function LandingPage({ onSelectRole, onSignIn, onOpenAmbulancePortal }: LandingPageProps) {
   const { theme, toggleTheme } = useTheme();
   const [scrolled, setScrolled] = useState(false);
   const [cityQuery, setCityQuery] = useState('');
   const [cityResults, setCityResults] = useState<typeof CITIES>([]);
   const [showResults, setShowResults] = useState(false);
   const [selectedCity, setSelectedCity] = useState<string | null>(null);
+  const [showAmbulanceModal, setShowAmbulanceModal] = useState(false);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -97,7 +100,10 @@ export function LandingPage({ onSelectRole }: LandingPageProps) {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] dark:bg-navy-900 text-slate-800 dark:text-navy-100">
+    <div
+      className="min-h-screen text-slate-100 relative bg-cover bg-center bg-fixed transition-colors duration-300"
+      style={{ backgroundImage: "linear-gradient(rgba(10, 18, 38, 0.88), rgba(10, 18, 38, 0.92)), url('/hospital_bg.jpg')" }}
+    >
       {/* Nav */}
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'glass-strong shadow-sm' : 'bg-transparent'}`}>
         <div className="max-w-7xl mx-auto px-6 lg:px-8 h-16 flex items-center justify-between">
@@ -108,6 +114,13 @@ export function LandingPage({ onSelectRole }: LandingPageProps) {
             <span className="text-sm font-bold tracking-tight">Emergency Ward Intelligence</span>
           </div>
           <div className="flex items-center gap-3">
+            <button
+              onClick={onOpenAmbulancePortal ?? (() => setShowAmbulanceModal(true))}
+              className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-red-600 to-red-700 hover:brightness-110 text-white text-xs font-bold transition-all shadow-md shadow-red-600/30 animate-pulse"
+            >
+              <Ambulance className="w-3.5 h-3.5" />
+              Ambulance Driver Portal
+            </button>
             {onSignIn && (
               <button
                 onClick={onSignIn}
@@ -414,6 +427,11 @@ export function LandingPage({ onSelectRole }: LandingPageProps) {
           </div>
         </div>
       </footer>
+
+      <AmbulanceLoginModal
+        isOpen={showAmbulanceModal}
+        onClose={() => setShowAmbulanceModal(false)}
+      />
     </div>
   );
 }
