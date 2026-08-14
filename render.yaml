@@ -1,0 +1,14 @@
+services:
+  # Deploy as a Static Site (Recommended for Vite/React frontend apps)
+  - type: web
+    name: emergency-ward-intelligence
+    env: static
+    buildCommand: npm install --include=dev && npm run build
+    staticPublishPath: ./dist
+    envVars:
+      - key: NPM_CONFIG_PRODUCTION
+        value: "false"
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
